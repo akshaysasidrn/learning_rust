@@ -1,28 +1,33 @@
 fn main() {
     let mut post = Post::new();
 
-    post.add_text("Wubba lubba dub dub!");
+    post.add_text("Wubba lubba.. ");
     assert_eq!("", post.content());
 
     post.request_review();
+    post.add_text("bud bud!");
     assert_eq!("", post.content());
 
     // request rejection moves it back to draft state
     post.reject();
+    post.add_text("dub dub!");
     assert_eq!("", post.content());
 
     post.approve();
+    post.add_text(" Peace among worlds!");
     assert_eq!("", post.content());
 
     post.request_review();
+    post.add_text("bud bud!");
     assert_eq!("", post.content());
 
     // Need two level approval
     post.approve();
+    post.add_text("bud bud!");
     assert_eq!("", post.content());
 
     post.approve();
-    assert_eq!("Wubba lubba dub dub!", post.content());
+    assert_eq!("Wubba lubba.. dub dub! Peace among worlds!", post.content());
 }
 
 pub struct Post {
@@ -39,7 +44,9 @@ impl Post {
     }
 
     pub fn add_text(&mut self, text: &str) {
-        self.content.push_str(text);
+        if self.state.as_ref().unwrap().can_add_text() {
+            self.content.push_str(text);
+        }
     }
 
     pub fn content(&self) -> &str {
@@ -72,6 +79,9 @@ trait State {
     fn content<'a>(&self, _post: &'a Post) -> &'a str {
         ""
     }
+    fn can_add_text(&self) -> bool {
+        false
+    }
 }
 
 struct Draft {}
@@ -82,11 +92,15 @@ impl State for Draft {
     }
 
     fn approve(self: Box<Self>) -> Box<dyn State> {
-        self
+       self
     }
 
     fn reject(self: Box<Self>) -> Box<dyn State> {
         self
+    }
+
+    fn can_add_text(&self) -> bool {
+        true
     }
 }
 
