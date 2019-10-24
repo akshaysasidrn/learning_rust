@@ -7,6 +7,7 @@ fn main() {
     post.request_review();
     assert_eq!("", post.content());
 
+    // request rejection moves it back to draft state
     post.reject();
     assert_eq!("", post.content());
 
@@ -14,6 +15,10 @@ fn main() {
     assert_eq!("", post.content());
 
     post.request_review();
+    assert_eq!("", post.content());
+
+    // Need two level approval
+    post.approve();
     assert_eq!("", post.content());
 
     post.approve();
@@ -64,7 +69,7 @@ trait State {
     fn request_review(self: Box<Self>) -> Box<dyn State>;
     fn approve(self: Box<Self>) -> Box<dyn State>;
     fn reject(self: Box<Self>) -> Box<dyn State>;
-    fn content<'a>(&self, post: &'a Post) -> &'a str {
+    fn content<'a>(&self, _post: &'a Post) -> &'a str {
         ""
     }
 }
@@ -73,7 +78,7 @@ struct Draft {}
 
 impl State for Draft {
     fn request_review(self: Box<Self>) -> Box<dyn State> {
-        Box::new(PendingReview {})
+        Box::new(PendingReview {approval_count: 0})
     }
 
     fn approve(self: Box<Self>) -> Box<dyn State> {
@@ -85,15 +90,28 @@ impl State for Draft {
     }
 }
 
-struct PendingReview {}
+struct PendingReview {
+    approval_count: i8,
+}
+
 
 impl State for PendingReview {
     fn request_review(self: Box<Self>) -> Box<dyn State> {
         self
     }
 
-    fn approve(self: Box<Self>) -> Box<dyn State> {
-        Box::new(Published {})
+    fn approve(mut self: Box<Self>) -> Box<dyn State> {
+        match self.approval_count {
+            1 => {
+                self.approval_count += 1;
+                Box::new(Published {})
+            },
+            0 => {
+                self.approval_count += 1;
+                self
+            },
+            _ => self,
+        }
     }
 
     fn reject(self: Box<Self>) -> Box<dyn State> {
